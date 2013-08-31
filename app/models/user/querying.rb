@@ -27,7 +27,7 @@ module User::Querying
     opts[:klass] = klass
     opts[:by_members_of] ||= self.aspect_ids
 
-    post_ids = klass.connection.select_values(visible_shareable_sql(klass, opts)).map { |id| id.to_i }
+    post_ids = klass.connection.select_values(visible_shareable_sql(klass, opts)).map(&:to_i)
     post_ids += klass.connection.select_values("#{construct_public_followings_sql(opts).to_sql} LIMIT #{opts[:limit]}").map {|id| id.to_i }
   end
 
@@ -38,8 +38,9 @@ module User::Querying
 
     shareable_from_others = construct_shareable_from_others_query(opts)
     shareable_from_self = construct_shareable_from_self_query(opts)
+    shareable_from_self_sql = klass.connection.unprepared_statement { shareable_from_self.to_sql }
 
-    "(#{shareable_from_others.to_sql} LIMIT #{opts[:limit]}) UNION ALL (#{shareable_from_self.to_sql} LIMIT #{opts[:limit]}) ORDER BY #{opts[:order]} LIMIT #{opts[:limit]}"
+    "(#{shareable_from_others.to_sql} LIMIT #{opts[:limit]}) UNION ALL (#{shareable_from_self_sql} LIMIT #{opts[:limit]}) ORDER BY #{opts[:order]} LIMIT #{opts[:limit]}"
   end
 
   def ugly_select_clause(query, opts)
